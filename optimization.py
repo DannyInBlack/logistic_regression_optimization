@@ -8,15 +8,17 @@ import time
 
 
 class LogisticRegressionBase:
-    def __init__(self, lr=0.001, n_iters=100000, plot = True, graph_r=100, loss_limit = 0.05):
-        self.plot = plot
-        self.loss_limit = loss_limit
-        self.lr = lr
-        self.n_iters = n_iters
-        self.ur = graph_r
-        self.weights = None
-        self.bias = None
-        self.losses = []
+    def __init__(
+        self, lr=0.001, n_iters=100000, plot=True, graph_r=100, loss_limit=0.05
+    ):
+        self.plot = plot  # want a plot?
+        self.loss_limit = loss_limit  # stops training once loss is below the limit
+        self.lr = lr  # learning rate
+        self.n_iters = n_iters + 1 # number of epochs
+        self.ur = graph_r  # how frequently should the graph be updated
+        self.weights = None  # initialize weights with nothing
+        self.bias = None  # initalize biases with nothing
+        self.losses = []  # initalize losses with nothing
 
     def sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
@@ -31,6 +33,8 @@ class LogisticRegressionBase:
 class LogisticRegressionVanilla(LogisticRegressionBase):
     def fit(self, x: np.ndarray, y: np.ndarray):
         n_samples, n_features = x.shape
+
+        # initialize weights and bias with zeros
         self.weights = np.zeros(n_features)
         self.bias = 0
 
@@ -43,6 +47,7 @@ class LogisticRegressionVanilla(LogisticRegressionBase):
             (line,) = axes.plot([], [], label="Loss")
             axes.legend()
 
+        # update the after each iteration
         for i in range(self.n_iters):
             linear_predictions = np.dot(x, self.weights) + self.bias
             predictions = self.sigmoid(linear_predictions)
@@ -54,16 +59,19 @@ class LogisticRegressionVanilla(LogisticRegressionBase):
             self.bias -= self.lr * db
 
             if i % self.ur == 0:
+                # binary cross entropy
                 loss = -(1 / n_samples) * np.sum(
                     y * np.log(predictions) + (1 - y) * np.log(1 - predictions)
                 )
-                if self.plot:
+                if self.plot: # update the graph
                     self.losses.append(loss)
-                    line.set_data(range(0, len(self.losses) * self.ur, self.ur), self.losses)
+                    line.set_data(
+                        range(0, len(self.losses) * self.ur, self.ur), self.losses
+                    )
                     axes.relim()
                     axes.autoscale_view()
                     plt.pause(0.01)
-                
+
                 if loss <= self.loss_limit:
                     break
 
@@ -77,7 +85,7 @@ class LogisticRegressionStochastic(LogisticRegressionBase):
         self.weights = np.zeros(n_features)
         self.bias = 0
 
-        if self.plot:    
+        if self.plot:
             plt.ion()
             _, axes = plt.subplots()
             axes.set_title("Loss During Training")
@@ -86,8 +94,9 @@ class LogisticRegressionStochastic(LogisticRegressionBase):
             (line,) = axes.plot([], [], label="Loss")
             axes.legend()
 
+        # update weights for each sample in every iteration
         for i in range(self.n_iters):
-            for idx in range(n_samples):
+            for idx in range(n_samples): # do for each sample
                 xi = x[idx].reshape(1, -1)
                 yi = y[idx]
 
@@ -108,7 +117,9 @@ class LogisticRegressionStochastic(LogisticRegressionBase):
                 )
                 if self.plot:
                     self.losses.append(loss)
-                    line.set_data(range(0, len(self.losses) * self.ur, self.ur), self.losses)
+                    line.set_data(
+                        range(0, len(self.losses) * self.ur, self.ur), self.losses
+                    )
                     axes.relim()
                     axes.autoscale_view()
                     plt.pause(0.01)
@@ -134,13 +145,16 @@ class LogisticRegressionMiniBatch(LogisticRegressionBase):
             (line,) = axes.plot([], [], label="Loss")
             axes.legend()
 
+        # divide dataset into batches on each iteration
         for i in range(self.n_iters):
+            # shuffle dataset
             indices = np.arange(n_samples)
             np.random.shuffle(indices)
             x = x[indices]
             y = y[indices]
 
             for start_idx in range(0, n_samples, batch_size):
+                # divide into mini-batches
                 end_idx = start_idx + batch_size
                 xb = x[start_idx:end_idx]
                 yb = y[start_idx:end_idx]
@@ -162,8 +176,10 @@ class LogisticRegressionMiniBatch(LogisticRegressionBase):
                 )
                 if self.plot:
                     self.losses.append(loss)
-                    line.set_data(range(0, len(self.losses) * self.ur, self.ur), self.losses)
-                    
+                    line.set_data(
+                        range(0, len(self.losses) * self.ur, self.ur), self.losses
+                    )
+
                     axes.relim()
                     axes.autoscale_view()
                     plt.pause(0.01)
@@ -173,7 +189,6 @@ class LogisticRegressionMiniBatch(LogisticRegressionBase):
 
         if self.plot:
             plt.ioff()
-
 
 
 if __name__ == "__main__":
@@ -186,12 +201,12 @@ if __name__ == "__main__":
     x = scaler.fit_transform(x)
 
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=0.2, random_state=42
+        x, y, test_size=0.3, random_state=42
     )
 
-    clf = LogisticRegressionVanilla(loss_limit=0.1)
-    # clf = LogisticRegressionStochastic(loss_limit=0.1, plot=False)
-    # clf = LogisticRegressionMiniBatch(loss_limit=0.1, plot=False)
+    # clf = LogisticRegressionVanilla(n_iters=1000, lr=0.001)
+    # clf = LogisticRegressionStochastic(n_iters=1000, lr=0.001)
+    clf = LogisticRegressionMiniBatch(n_iters=1000, lr=0.001)
 
     start_time = time.time()
     clf.fit(x_train, y_train)
